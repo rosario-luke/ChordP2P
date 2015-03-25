@@ -5,9 +5,15 @@ import java.util.Scanner;
  */
 public class ProcessCoordinator extends Thread {
 
+    private ChordThread[] myThreads;
+
     public static void main(String[] args) {
        System.out.println("Started Coordinator Thread");
         new ProcessCoordinator().startSystem();
+    }
+
+    public ProcessCoordinator(){
+        myThreads = new ChordThread[256];
     }
 
     public void startSystem(){
@@ -41,7 +47,17 @@ public class ProcessCoordinator extends Thread {
     }
 
     public void join(int p){
-
+        ChordThread zero = myThreads[0];
+        if(zero == null){
+            ChordThread n = new ChordThread(0, null);
+            myThreads[0] = n;
+            n.run();
+            print("Attempted to start node " + p + " but changed identifier to 0");
+        } else {
+            ChordThread n = new ChordThread(p, zero);
+            myThreads[p] = n;
+            n.run();
+        }
     }
 
     public void find(int p, int k){

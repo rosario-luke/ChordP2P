@@ -30,11 +30,33 @@ public class ChordThread implements Runnable {
             }
         } else {
             // Ask the helper for each key to set it up
+            // Tell other nodes to update their tables
         }
 
     }
 
     public void run(){
+        String message = null;
+        while(true){
 
+            try{
+                message = inputQueue.take();
+            } catch(InterruptedException e){
+                System.out.println("Interrupt occurred for thread " + identifier);
+                e.printStackTrace();
+                continue;
+            }
+
+
+            print(message);
+
+
+        }
+
+    }
+
+
+    public void print(String toPrint){
+        System.out.println(toPrint);
     }
 }
