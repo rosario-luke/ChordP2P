@@ -6,7 +6,7 @@ import java.util.Scanner;
 public class ProcessCoordinator extends Thread {
 
     private ChordThread[] myThreads;
-
+    private ChordThread zero;
     public static void main(String[] args) {
        System.out.println("Started Coordinator Thread");
         new ProcessCoordinator().startSystem();
@@ -14,12 +14,16 @@ public class ProcessCoordinator extends Thread {
 
     public ProcessCoordinator(){
         myThreads = new ChordThread[256];
+        zero = new ChordThread(0, null);
+        myThreads[0] = zero;
+        zero.run();
     }
 
     public void startSystem(){
 
         Scanner input = new Scanner(System.in);
         String curLine, command;
+
         while(!(curLine = input.nextLine()).equals("exit")){
 
             command = curLine.split(" ")[0];
@@ -47,17 +51,14 @@ public class ProcessCoordinator extends Thread {
     }
 
     public void join(int p){
-        ChordThread zero = myThreads[0];
-        if(zero == null){
-            ChordThread n = new ChordThread(0, null);
-            myThreads[0] = n;
-            n.run();
-            print("Attempted to start node " + p + " but changed identifier to 0");
-        } else {
+        if(myThreads[p] == null) {
             ChordThread n = new ChordThread(p, zero);
             myThreads[p] = n;
             n.run();
+        } else {
+            print("Node " + p + " already in the network");
         }
+
     }
 
     public void find(int p, int k){
