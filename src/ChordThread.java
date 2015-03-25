@@ -9,24 +9,28 @@ public class ChordThread implements Runnable {
 
     protected ArrayList<Integer> keys;
     protected int identifier;
-    protected SynchronousQueue<String> inputQueue;
+    protected SynchronousQueue<ThreadMessage> inputQueue;
     protected Finger[] fingers;
     protected ChordThread predecessor;
+
 
     public ChordThread(int p, ChordThread helper){
         identifier = p;
         keys = new ArrayList<Integer>();
-        inputQueue = new SynchronousQueue<String>();
+        inputQueue = new SynchronousQueue<ThreadMessage>();
         setUpFingerTable(helper);
     }
 
     public void setUpFingerTable(ChordThread helper){
         fingers = new Finger[9]; // not using the first entry, only 1-8
-        if(helper == null){
+        if(helper == null){ // Node 0
             predecessor = this;
             for(int i  = 1; i<9; i++){
                 fingers[i] = new Finger();
                 fingers[i].node = this;
+            }
+            for(int i = 0; i < 256; i++){
+                keys.add(i);
             }
         } else {
             // Ask the helper for each key to set it up
@@ -53,6 +57,33 @@ public class ChordThread implements Runnable {
 
         }
 
+    }
+
+    public ChordThread findSuccessor(int id){
+        ChordThread n = findPredecessor(id);
+        return n.fingers[1].node;
+    }
+
+    public ChordThread findPredecessor(int id){
+        ChordThread m = this;
+        while(!betweenEndInclusive(id, m.identifier, m.fingers[1].node.identifier)){
+            ClosestProFingerCommand c = new ClosestProFingerCommand(id);
+            ThreadMessage message = new ThreadMessage(c, this, null);
+            m.inputQueue.add(message);
+            m = inputQueue.take().getReturnThread();
+
+        }
+        return m;
+    }
+
+    public boolean betweenEndInclusive(int id, int start, int end){
+        if(start == end){
+            return id == start;
+        } else if(start > end){
+            return (id >start || id <= end);
+        } else{
+            return id>start && id<=end;
+        }
     }
 
 
