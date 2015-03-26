@@ -1,11 +1,11 @@
 /**
  * Created by lucas on 3/25/15.
  */
-public class ClosestProFingerCommand extends Command{
+public class ClosestPreFingerCommand extends Command{
 
     private int id;
 
-    public ClosestProFingerCommand(int i){
+    public ClosestPreFingerCommand(int i){
         super("closestprofinger " + i);
         id = i;
     }

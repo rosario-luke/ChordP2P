@@ -9,24 +9,23 @@ public class ProcessCoordinator extends Thread {
     private ChordThread[] myThreads;
     private ChordThread zero;
     public static void main(String[] args) {
-       System.out.println("Started Coordinator Thread");
-        new ProcessCoordinator().startSystem();
+        System.out.println("Started Coordinator Thread");
+        new ProcessCoordinator().run();
     }
 
-    public ProcessCoordinator(){
+
+
+    public void run(){
         myThreads = new ChordThread[256];
         zero = new ChordThread(0, null);
         myThreads[0] = zero;
-        zero.run();
-    }
-
-    public void startSystem(){
-
+        zero.start();
+        print("Starting system");
         Scanner input = new Scanner(System.in);
         String curLine, command;
-
+        print("Listening for Commands");
         while(!(curLine = input.nextLine()).equals("exit")){
-
+            print("Recieved command " + curLine);
             command = curLine.split(" ")[0];
 
             if(command.equals("join")){
@@ -57,7 +56,7 @@ public class ProcessCoordinator extends Thread {
         if(myThreads[p] == null) {
             ChordThread n = new ChordThread(p, zero);
             myThreads[p] = n;
-            n.run();
+            n.start();
         } else {
             print("Node " + p + " already in the network");
         }
@@ -65,7 +64,13 @@ public class ProcessCoordinator extends Thread {
     }
 
     public void find(int p, int k){
-
+        if(myThreads[p] != null){
+            print("Sending command");
+            FindCommand fc = new FindCommand(k);
+            myThreads[p].inputQueue.add(new ThreadMessage(fc, null, null));
+        } else {
+            print("Node " + p + " does not exist");
+        }
     }
 
     public void leave(int p){

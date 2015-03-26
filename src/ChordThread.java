@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 
 
@@ -13,7 +12,7 @@ public class ChordThread implements Runnable {
     protected SynchronousQueue<ThreadMessage> inputQueue;
     protected Finger[] fingers;
     protected ChordThread predecessor;
-
+    private Thread t;
 
     public ChordThread(int p, ChordThread helper){
         identifier = p;
@@ -80,19 +79,30 @@ public class ChordThread implements Runnable {
         }
     }
     public void run(){
-        Command message = null;
+        ThreadMessage message = null;
         while(true){
 
             try{
-                message = inputQueue.take().getCommand();
+                message = inputQueue.take();
             } catch(InterruptedException e){
                 System.out.println("Interrupt occurred for thread " + identifier);
                 e.printStackTrace();
                 continue;
             }
 
+            Command c = message.getCommand();
+            if(c instanceof ClosestPreFingerCommand){
+                int id = ((ClosestPreFingerCommand) c).getId();
+                ChordThread toReturn = getClosestPrecedingFinger(id);
+                ThreadMessage r = new ThreadMessage(c, this, toReturn);
+                message.getOrigin().inputQueue.add(r);
+            } else if(c instanceof FindCommand){
+                int id = ((FindCommand) c).getKey();
+                print("Thread " + identifier + " found key " + id);
+            } else if(c instanceof JoinCommand){
 
-            print(message.getCommand());
+            }
+
 
 
         }
@@ -104,10 +114,20 @@ public class ChordThread implements Runnable {
         return n.fingers[1].node;
     }
 
+    public ChordThread getClosestPrecedingFinger(int id){
+
+        for(int i = 8; i > 0; i--){
+            if(fingers[i].node.identifier > identifier && fingers[i].node.identifier < id){
+                return fingers[i].node;
+            }
+        }
+        return this;
+    }
+
     public ChordThread findPredecessor(int id){
         ChordThread m = this;
         while(!betweenEndInclusive(id, m.identifier, m.fingers[1].node.identifier)){
-            ClosestProFingerCommand c = new ClosestProFingerCommand(id);
+            ClosestPreFingerCommand c = new ClosestPreFingerCommand(id);
             ThreadMessage message = new ThreadMessage(c, this, null);
             m.inputQueue.add(message);
 
@@ -154,6 +174,13 @@ public class ChordThread implements Runnable {
         predecessor= newPredecessor;
     }
 
+    public void start() {
+
+        if (t == null) {
+            t = new Thread(this, "Node:" + identifier);
+        }
+        t.start();
+    }
 
     public void print(String toPrint){
         System.out.println(toPrint);
