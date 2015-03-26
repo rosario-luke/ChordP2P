@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Scanner;
 
 /**
@@ -41,6 +42,8 @@ public class ProcessCoordinator extends Thread {
             } else if(command.equals("show")){
                 int process = Integer.parseInt(curLine.split(" ")[1]);
                 show(process);
+            }else if(command.equals("show all")){
+                showAll();
             }
         }
         System.out.println("Exiting System");
@@ -70,10 +73,24 @@ public class ProcessCoordinator extends Thread {
     }
 
     public void show(int p){
+        if(myThreads[p] != null) {
+            ArrayList<Integer> keyList= myThreads[p].getKeys();
+            for (Integer key: keyList){
+                print(key.toString());
+            }
+        } else {
+            print("Node " + p + " does not exist in the network");
+        }
 
     }
 
     public void showAll(){
+        for (int i=0; i<256; i++){
+            if (myThreads[i]!=null){
+                print("Keys for node "+i);
+                show(i);
+            }
+        }
 
     }
 }
