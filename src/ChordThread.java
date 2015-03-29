@@ -19,9 +19,13 @@ public class ChordThread implements Runnable {
         keys = new ArrayList<Integer>();
         inputQueue = new SynchronousQueue<ThreadMessage>();
         setUpFingerTable(helper);
+        for(int i = 1; i<9; i++){
+            print("Finger[" + i + "] = node(" + fingers[i].node.identifier + ") for start " + fingers[i].start);
+        }
         if (helper!=null) {
             updateOthers();
         }
+        print("Node " + identifier + " successfully joined");
     }
 
     public void setUpFingerTable(ChordThread helper){
@@ -31,6 +35,8 @@ public class ChordThread implements Runnable {
             for(int i  = 1; i<9; i++){
                 fingers[i] = new Finger();
                 fingers[i].node = this;
+                fingers[i].start = (identifier + (int)Math.pow(2,(i-1))) % 256;
+                fingers[i].interval = new Interval(fingers[i].start, fingers[i].start);
             }
             for(int i = 0; i < 256; i++){
                 keys.add(i);
@@ -57,9 +63,11 @@ public class ChordThread implements Runnable {
             fingers[1].node.updatePredecessor(this);
             for (int i=1; i<8 ;i++){ // only up to 8 since we're doing 2-step accesses
                 if (betweenStartInclusive(fingers[i+1].start, identifier, fingers[i].node.getIdentifier())){
+                    print("Set fingers[" + i + "+1] equal to fingers["+i+"]");
                     fingers[i+1].node=fingers[i].node;
                 }
                 else{
+                    print("running find for finger[" + i + "+1]");
                     FindCommand fc = new FindCommand(fingers[i+1].start);
                     ThreadMessage m = new ThreadMessage(fc, this, null);
                     helper.inputQueue.add(m);
@@ -71,7 +79,11 @@ public class ChordThread implements Runnable {
                         print("Error asking helper for id: " + fingers[i + 1].start);
                         continue;
                     }
-                    fingers[i+1].node = ret.getReturnThread();
+                    if(betweenStartInclusive(identifier, fingers[i+1].start, ret.getReturnThread().identifier)){
+                        fingers[i+1].node = this;
+                    } else {
+                        fingers[i + 1].node = ret.getReturnThread();
+                    }
                 }
             }
             int startKeyPosition;
@@ -92,12 +104,16 @@ public class ChordThread implements Runnable {
             }
 
             ChordThread p= findPredecessor(newIdentifier);
+            print("Calling updatefingertable on node " + p.identifier);
+            // TODO: This should be a command message not a method call
             p.updateFingerTable(this, i);
         }
     }
     public void updateFingerTable(ChordThread s, int i){
         if (betweenStartInclusive(s.identifier, this.identifier, i)){
+            print("Node " + identifier + " updating finger " + i + " to identifier " + s.identifier);
             fingers[i].node=s;
+            fingers[i].interval = new Interval(fingers[i].start, s.identifier);
             ChordThread p= predecessor;
             p.updateFingerTable(s,i);
 
@@ -122,6 +138,9 @@ public class ChordThread implements Runnable {
                 ThreadMessage r = new ThreadMessage(c, this, toReturn);
                 message.getOrigin().inputQueue.add(r);
             } else if(c instanceof FindCommand){
+                for(int i = 1; i<9; i++){
+                    print("Finger[" + i + "] = node(" + fingers[i].node.identifier + ") for start " + fingers[i].start);
+                }
                 int id = ((FindCommand) c).getKey();
                 ChordThread hasKey = findSuccessor(id);
                 if(message.getOrigin() != null){
@@ -149,28 +168,43 @@ public class ChordThread implements Runnable {
     public ChordThread getClosestPrecedingFinger(int id){
 
         for(int i = 8; i > 0; i--){
-            if(fingers[i].node.identifier > identifier && fingers[i].node.identifier < id){
+
+            if(inBetween(fingers[i].node.identifier, identifier, id)){
                 return fingers[i].node;
             }
         }
         return this;
     }
 
+    public boolean inBetween(int id, int start, int end){
+        if(start > end){
+            return id > start || id < end;
+        } else {
+            return id > start && id < end;
+        }
+    }
+
     public ChordThread findPredecessor(int id){
 
         ChordThread m = this;
         while(!betweenEndInclusive((id % 256), m.identifier, m.fingers[1].node.identifier)){
-            ClosestPreFingerCommand c = new ClosestPreFingerCommand(id);
-            ThreadMessage message = new ThreadMessage(c, this, null);
-            m.inputQueue.add(message);
+            if(m!= this) {
+                ClosestPreFingerCommand c = new ClosestPreFingerCommand(id);
+                ThreadMessage message = new ThreadMessage(c, this, null);
+                m.inputQueue.add(message);
 
-            try{
-                m = inputQueue.take().getReturnThread();
-            } catch(InterruptedException e){
-                System.out.println("Return thread failed");
-                e.printStackTrace();
-                continue;
+                try{
+                    m = inputQueue.take().getReturnThread();
+                } catch(InterruptedException e){
+                    System.out.println("Return thread failed");
+                    e.printStackTrace();
+                    continue;
+                }
+            } else {
+                m = getClosestPrecedingFinger(id);
             }
+
+
 
         }
         return m;
@@ -178,7 +212,7 @@ public class ChordThread implements Runnable {
 
     public boolean betweenEndInclusive(int id, int start, int end){
         if(start == end){
-            return id == start;
+            return true;
         } else if(start > end){
             return (id >start || id <= end);
         } else{
@@ -187,7 +221,7 @@ public class ChordThread implements Runnable {
     }
     public boolean betweenStartInclusive(int id, int start, int end){
         if(start == end){
-            return id == start;
+            return true;
         } else if(start > end){
             return (id >=start || id < end);
         } else{

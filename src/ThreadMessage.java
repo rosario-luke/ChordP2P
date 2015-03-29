@@ -7,9 +7,10 @@ public class ThreadMessage {
     private ChordThread origin;
     private ChordThread returnThread;
 
-    public ThreadMessage(Command c, ChordThread o, ChordThread returnThread){
+    public ThreadMessage(Command c, ChordThread o, ChordThread rt){
         command = c;
         origin = o;
+        returnThread = rt;
     }
 
     public Command getCommand(){
