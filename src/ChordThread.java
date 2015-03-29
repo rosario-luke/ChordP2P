@@ -95,10 +95,12 @@ public class ChordThread implements Runnable {
     }
 
     public void getKeysFromPredecessor(){
+        print("Node " + identifier + " removing keys from predecessor " + predecessor.identifier);
         for(int i = predecessor.identifier + 1; i<identifier + 1; i++){
-            predecessor.removeKey(i);
+            fingers[1].node.keys.remove((Integer)(i));
             keys.add(i);
         }
+
     }
 
     public void removeKey(int k){
@@ -151,7 +153,16 @@ public class ChordThread implements Runnable {
                 int id = ((ClosestPreFingerCommand) c).getId();
                 ChordThread toReturn = getClosestPrecedingFinger(id);
                 ThreadMessage r = new ThreadMessage(c, this, toReturn);
-                message.getOrigin().inputQueue.add(r);
+                boolean caughtError = true;
+                while(caughtError){
+                    try{
+                        message.getOrigin().inputQueue.add(r);
+                        caughtError = false;
+                    } catch(IllegalStateException e){
+
+                    }
+                }
+
             } else if(c instanceof FindCommand){
                 for(int i = 1; i<9; i++){
                     print("Finger[" + i + "] = node(" + fingers[i].node.identifier + ") for start " + fingers[i].start);
@@ -160,7 +171,15 @@ public class ChordThread implements Runnable {
                 ChordThread hasKey = findSuccessor(id);
                 if(message.getOrigin() != null){
                     ThreadMessage r = new ThreadMessage(c, this, hasKey);
-                    message.getOrigin().inputQueue.add(r);
+                    boolean caughtError = true;
+                    while(caughtError) {
+                        try {
+                            message.getOrigin().inputQueue.add(r);
+                            caughtError = false;
+                        } catch(IllegalStateException e){
+                            print("Caught error");
+                        }
+                    }
                 } else {
 
                     print("Thread " + identifier + " found key " + id + " at node " + hasKey.identifier);
@@ -176,8 +195,9 @@ public class ChordThread implements Runnable {
     }
 
     public ChordThread findSuccessor(int id){
-        if(keys.contains(id)) { return this;}
+        if(keys.contains(id)) { print("node " + identifier + " had the key itself");return this;}
         ChordThread n = findPredecessor(id);
+        print("Find successor returned node " + n.identifier + " with successor " + n.fingers[1].node.identifier);
         return n.fingers[1].node;
     }
 
@@ -207,7 +227,16 @@ public class ChordThread implements Runnable {
             if(m!= this) {
                 ClosestPreFingerCommand c = new ClosestPreFingerCommand(id);
                 ThreadMessage message = new ThreadMessage(c, this, null);
-                m.inputQueue.add(message);
+                boolean caughtError = true;
+                while(caughtError){
+                    try{
+                        m.inputQueue.add(message);
+                        caughtError = false;
+                    } catch(IllegalStateException e){
+
+                    }
+                }
+
 
                 try{
                     m = inputQueue.take().getReturnThread();
