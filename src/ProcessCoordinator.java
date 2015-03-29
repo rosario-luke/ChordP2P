@@ -65,7 +65,7 @@ public class ProcessCoordinator extends Thread {
 
     public void find(int p, int k){
         if(myThreads[p] != null){
-            print("Sending command");
+
             FindCommand fc = new FindCommand(k);
             myThreads[p].inputQueue.add(new ThreadMessage(fc, null, null));
         } else {

@@ -25,6 +25,7 @@ public class ChordThread implements Runnable {
         if (helper!=null) {
             updateOthers();
         }
+        getKeysFromPredecessor();
         print("Node " + identifier + " successfully joined");
     }
 
@@ -92,6 +93,18 @@ public class ChordThread implements Runnable {
         }
 
     }
+
+    public void getKeysFromPredecessor(){
+        for(int i = predecessor.identifier + 1; i<identifier + 1; i++){
+            predecessor.removeKey(i);
+            keys.add(i);
+        }
+    }
+
+    public void removeKey(int k){
+        keys.remove((Object)(k));
+    }
+
     public void updateOthers(){
         for (int i=1; i<9; i++){
             int logTraversal=(int)Math.pow(2,i-1);
@@ -104,18 +117,20 @@ public class ChordThread implements Runnable {
             }
 
             ChordThread p= findPredecessor(newIdentifier);
-            print("Calling updatefingertable on node " + p.identifier);
+
             // TODO: This should be a command message not a method call
-            p.updateFingerTable(this, i);
+            if(p.identifier != this.identifier) {
+                updateFingerTable(p, this, i);
+            }
         }
     }
-    public void updateFingerTable(ChordThread s, int i){
-        if (betweenStartInclusive(s.identifier, this.identifier, i)){
-            print("Node " + identifier + " updating finger " + i + " to identifier " + s.identifier);
-            fingers[i].node=s;
-            fingers[i].interval = new Interval(fingers[i].start, s.identifier);
-            ChordThread p= predecessor;
-            p.updateFingerTable(s,i);
+    public void updateFingerTable(ChordThread p, ChordThread s, int i){
+        if(p.identifier == s.identifier){ return;}
+        if (betweenStartInclusive(s.identifier, p.identifier, p.fingers[i].node.identifier)){
+            p.fingers[i].node=s;
+            p.fingers[i].interval = new Interval(p.fingers[i].start, s.identifier);
+            ChordThread n= p.predecessor;
+            updateFingerTable(n, s,i);
 
         }
     }
@@ -147,7 +162,8 @@ public class ChordThread implements Runnable {
                     ThreadMessage r = new ThreadMessage(c, this, hasKey);
                     message.getOrigin().inputQueue.add(r);
                 } else {
-                    print("Thread " + hasKey.identifier + " found key " + id);
+
+                    print("Thread " + identifier + " found key " + id + " at node " + hasKey.identifier);
                 }
             } else if(c instanceof JoinCommand){
 
