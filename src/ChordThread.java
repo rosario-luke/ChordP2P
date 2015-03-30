@@ -207,9 +207,7 @@ public class ChordThread implements Runnable {
 
                     print("Thread " + identifier + " found key " + id + " at node " + hasKey.identifier);
                 }
-            } else if(c instanceof JoinCommand){
-
-            } else if(c instanceof UpdateFingerTableCommand){
+            }  else if(c instanceof UpdateFingerTableCommand){
                 UpdateFingerTableCommand ftc = (UpdateFingerTableCommand)c;
                 updateFingerTable(ftc.getFinger(), ftc.getFingerIndex());
                 ThreadMessage m = new ThreadMessage(new Command("Acknowledgement"), this, null);
