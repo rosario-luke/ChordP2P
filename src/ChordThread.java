@@ -25,7 +25,7 @@ public class ChordThread implements Runnable {
         if (helper!=null) {
             updateOthers();
         }
-        getKeysFromPredecessor();
+        getKeysFromSuccessor();
         print("Node " + identifier + " successfully joined");
     }
 
@@ -64,11 +64,10 @@ public class ChordThread implements Runnable {
             fingers[1].node.updatePredecessor(this);
             for (int i=1; i<8 ;i++){ // only up to 8 since we're doing 2-step accesses
                 if (betweenStartInclusive(fingers[i+1].start, identifier, fingers[i].node.getIdentifier())){
-                    print("Set fingers[" + i + "+1] equal to fingers["+i+"]");
                     fingers[i+1].node=fingers[i].node;
                 }
                 else{
-                    print("running find for finger[" + i + "+1]");
+
                     FindCommand fc = new FindCommand(fingers[i+1].start);
                     ThreadMessage m = new ThreadMessage(fc, this, null);
                     helper.inputQueue.add(m);
@@ -87,15 +86,14 @@ public class ChordThread implements Runnable {
                     }
                 }
             }
-            int startKeyPosition;
-            // todo update key positions
+
 
         }
 
     }
 
-    public void getKeysFromPredecessor(){
-        print("Node " + identifier + " removing keys from predecessor " + predecessor.identifier);
+    public void getKeysFromSuccessor(){
+        //print("Node " + identifier + " removing keys from predecessor " + predecessor.identifier);
         for(int i = predecessor.identifier + 1; i<identifier + 1; i++){
             fingers[1].node.keys.remove((Integer)(i));
             keys.add(i);
@@ -120,19 +118,44 @@ public class ChordThread implements Runnable {
 
             ChordThread p= findPredecessor(newIdentifier);
 
-            // TODO: This should be a command message not a method call
+
             if(p.identifier != this.identifier) {
-                updateFingerTable(p, this, i);
+                sendUpdateMessage(p, this, i);
+                //updateFingerTable(p, this, i);
             }
         }
     }
-    public void updateFingerTable(ChordThread p, ChordThread s, int i){
-        if(p.identifier == s.identifier){ return;}
-        if (betweenStartInclusive(s.identifier, p.identifier, p.fingers[i].node.identifier)){
-            p.fingers[i].node=s;
-            p.fingers[i].interval = new Interval(p.fingers[i].start, s.identifier);
-            ChordThread n= p.predecessor;
-            updateFingerTable(n, s,i);
+
+    public void sendUpdateMessage(ChordThread target, ChordThread s, int index){
+       // print("Sending update message to node " + target.identifier + " from node " + identifier);
+        if(target == s){ return;}
+        UpdateFingerTableCommand c = new UpdateFingerTableCommand(s, index);
+        ThreadMessage nMessage = new ThreadMessage(c,this,null);
+        boolean caughtError = true;
+        while(caughtError){
+            try{
+                target.inputQueue.add(nMessage);
+                caughtError = false;
+            } catch(IllegalStateException e){
+
+            }
+        }
+        try{
+            ThreadMessage response = inputQueue.take();
+        } catch(InterruptedException e){
+
+        }
+        //print("FINISHED");
+    }
+    public void updateFingerTable(ChordThread s, int i){
+        //print("Node " + identifier + " recieved updatefingertablecommand about node  " + identifier);
+        if(identifier == s.identifier){ return;}
+        if (betweenStartInclusive(s.identifier, identifier, fingers[i].node.identifier)){
+            fingers[i].node=s;
+            fingers[i].interval = new Interval(fingers[i].start, s.identifier);
+            ChordThread n= predecessor;
+            sendUpdateMessage(n,s,i);
+            //updateFingerTable(n, s,i);
 
         }
     }
@@ -164,9 +187,9 @@ public class ChordThread implements Runnable {
                 }
 
             } else if(c instanceof FindCommand){
-                for(int i = 1; i<9; i++){
+                /*for(int i = 1; i<9; i++){
                     print("Finger[" + i + "] = node(" + fingers[i].node.identifier + ") for start " + fingers[i].start);
-                }
+                }*/
                 int id = ((FindCommand) c).getKey();
                 ChordThread hasKey = findSuccessor(id);
                 if(message.getOrigin() != null){
@@ -186,6 +209,19 @@ public class ChordThread implements Runnable {
                 }
             } else if(c instanceof JoinCommand){
 
+            } else if(c instanceof UpdateFingerTableCommand){
+                UpdateFingerTableCommand ftc = (UpdateFingerTableCommand)c;
+                updateFingerTable(ftc.getFinger(), ftc.getFingerIndex());
+                ThreadMessage m = new ThreadMessage(new Command("Acknowledgement"), this, null);
+                boolean errorCaught = true;
+                while(errorCaught){
+                    try{
+                        message.getOrigin().inputQueue.add(m);
+                        errorCaught = false;
+                    } catch(IllegalStateException e){
+
+                    }
+                }
             }
 
 
@@ -195,9 +231,9 @@ public class ChordThread implements Runnable {
     }
 
     public ChordThread findSuccessor(int id){
-        if(keys.contains(id)) { print("node " + identifier + " had the key itself");return this;}
+        if(keys.contains(id)) { return this;}
         ChordThread n = findPredecessor(id);
-        print("Find successor returned node " + n.identifier + " with successor " + n.fingers[1].node.identifier);
+        //print("Find successor returned node " + n.identifier + " with successor " + n.fingers[1].node.identifier);
         return n.fingers[1].node;
     }
 
