@@ -38,10 +38,10 @@ public class ProcessCoordinator extends Thread {
             } else if(command.equals("leave")){
                 int process = Integer.parseInt(curLine.split(" ")[1]);
                 leave(process);
-            } else if(command.equals("show")){
+            } else if(curLine.equals("show")){
                 int process = Integer.parseInt(curLine.split(" ")[1]);
                 show(process);
-            }else if(command.equals("show all")){
+            }else if(curLine.equals("show all")){
                 showAll();
             }
         }
@@ -51,6 +51,8 @@ public class ProcessCoordinator extends Thread {
     public void print(String toPrint){
         System.out.println(toPrint);
     }
+
+    public void printOneLine(String toPrint){ System.out.print(toPrint);}
 
     public void join(int p){
         if(myThreads[p] == null) {
@@ -81,8 +83,9 @@ public class ProcessCoordinator extends Thread {
         if(myThreads[p] != null) {
             ArrayList<Integer> keyList= myThreads[p].getKeys();
             for (Integer key: keyList){
-                print(key.toString());
+                printOneLine(key.toString() + ",");
             }
+            print("");
         } else {
             print("Node " + p + " does not exist in the network");
         }
