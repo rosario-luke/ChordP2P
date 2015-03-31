@@ -57,8 +57,10 @@ public class ProcessCoordinator extends Thread {
     public void join(int p){
         if(myThreads[p] == null) {
             ChordThread n = new ChordThread(p, zero);
+            print("Haven't put into queue yet");
             myThreads[p] = n;
             n.start();
+
         } else {
             print("Node " + p + " already in the network");
         }
@@ -70,6 +72,13 @@ public class ProcessCoordinator extends Thread {
 
             FindCommand fc = new FindCommand(k);
             myThreads[p].inputQueue.add(new ThreadMessage(fc, null, null));
+            synchronized (fc){
+                try{
+                    fc.wait();
+                } catch(InterruptedException e){
+                    print("Error occurred while waiting for find command");
+                }
+            }
         } else {
             print("Node " + p + " does not exist");
         }
