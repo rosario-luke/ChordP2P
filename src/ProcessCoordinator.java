@@ -85,7 +85,20 @@ public class ProcessCoordinator extends Thread {
     }
 
     public void leave(int p){
-
+        if(myThreads[p] != null){
+            LeaveCommand fc = new LeaveCommand(p);
+            myThreads[p].inputQueue.add(new ThreadMessage(fc, null, null));
+            synchronized (fc){
+                try{
+                    fc.wait();
+                } catch(InterruptedException e){
+                    print("Error occurred while waiting for leave command");
+                }
+            }
+            myThreads[p]=null;
+        } else {
+            print("Node " + p + " does not exist");
+        }
     }
 
     public void show(int p){
