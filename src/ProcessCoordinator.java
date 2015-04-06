@@ -38,7 +38,7 @@ public class ProcessCoordinator extends Thread {
             } else if(command.equals("leave")){
                 int process = Integer.parseInt(curLine.split(" ")[1]);
                 leave(process);
-            } else if(curLine.equals("show")){
+            } else if(curLine.startsWith("show") && !curLine.equals("show all")){
                 int process = Integer.parseInt(curLine.split(" ")[1]);
                 show(process);
             }else if(curLine.equals("show all")){
@@ -103,6 +103,7 @@ public class ProcessCoordinator extends Thread {
 
     public void show(int p){
         if(myThreads[p] != null) {
+            print("Showing for p: " + p);
             ArrayList<Integer> keyList= myThreads[p].getKeys();
             for (Integer key: keyList){
                 printOneLine(key.toString() + ",");
