@@ -1,3 +1,4 @@
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.concurrent.SynchronousQueue;
 
@@ -13,18 +14,23 @@ public class ChordThread implements Runnable {
     protected Finger[] fingers;
     protected ChordThread predecessor;
     private Thread t;
+    private boolean outputToFile = false;
+    private PrintWriter printWriter;
 
-    public ChordThread(int p, ChordThread helper){
+    public ChordThread(int p, ChordThread helper, PrintWriter pW){
         identifier = p;
         keys = new ArrayList<Integer>();
         inputQueue = new SynchronousQueue<ThreadMessage>();
         setUpFingerTable(helper);
-        for(int i = 1; i<9; i++){
+       /* for(int i = 1; i<9; i++){
             print("Finger[" + i + "] = node(" + fingers[i].node.identifier + ") for start " + fingers[i].start);
-        }
+        }*/
         getKeysFromSuccessor();
         print("Node " + identifier + " successfully joined");
-
+        if(pW != null){
+            printWriter = pW;
+            outputToFile = true;
+        }
 
     }
 
@@ -173,7 +179,7 @@ public class ChordThread implements Runnable {
                 return;
             }
             if (betweenStartInclusive(s.identifier, identifier, fingers[i].node.identifier)) {
-                print("Node " + identifier + " updating finger " + i + " to node " + s.identifier);
+                //print("Node " + identifier + " updating finger " + i + " to node " + s.identifier);
                 fingers[i].node = s;
                 fingers[i].interval = new Interval(fingers[i].start, s.identifier);
                 ChordThread n = predecessor;
@@ -216,11 +222,11 @@ public class ChordThread implements Runnable {
                 }
 
             } else if(c instanceof FindCommand){
-                if(message.getOrigin() == null) {
+                /*if(message.getOrigin() == null) {
                     for (int i = 1; i < 9; i++) {
                         print("Finger[" + i + "] = node(" + fingers[i].node.identifier + ") for start " + fingers[i].start);
                     }
-                }
+                }*/
                 int id = ((FindCommand) c).getKey();
                 ChordThread hasKey = findSuccessor(id);
                 if(message.getOrigin() != null){
@@ -423,6 +429,10 @@ public class ChordThread implements Runnable {
         t.start();
     }
     public void print(String toPrint){
+        if(outputToFile){
+            printWriter.println(toPrint);
+        }
+        // Ouput to STDOUT anyway just so we can see what's happening
         System.out.println(toPrint);
     }
 }
