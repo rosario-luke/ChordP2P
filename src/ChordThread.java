@@ -16,15 +16,17 @@ public class ChordThread implements Runnable {
     private Thread t;
     private boolean outputToFile = false;
     private PrintWriter printWriter;
-
+    private int numMessagesSent;
     public ChordThread(int p, ChordThread helper, PrintWriter pW){
         identifier = p;
         keys = new ArrayList<Integer>();
         inputQueue = new SynchronousQueue<ThreadMessage>();
+        numMessagesSent = 0;
         setUpFingerTable(helper);
        /* for(int i = 1; i<9; i++){
             print("Finger[" + i + "] = node(" + fingers[i].node.identifier + ") for start " + fingers[i].start);
         }*/
+
         getKeysFromSuccessor();
         print("Node " + identifier + " successfully joined");
         if(pW != null){
@@ -67,7 +69,7 @@ public class ChordThread implements Runnable {
 
             //should we use messages for these?
             UpdatePredecessorCommand p= new UpdatePredecessorCommand(this);
-            sendUpdateMessage(fingers[1].node, this, p);
+            boolean successful = sendUpdateMessage(fingers[1].node, this, p);
             predecessor= helper.findPredecessor(identifier);
             predecessor.fingers[1].node = this;
 
@@ -87,15 +89,21 @@ public class ChordThread implements Runnable {
 
                     FindCommand fc = new FindCommand(fingers[i+1].start);
                     ThreadMessage m = new ThreadMessage(fc, this, null);
-                    helper.inputQueue.add(m);
-                    ThreadMessage ret = null;
-                    try {
+                    //helper.inputQueue.add(m);
+                    boolean smRet = sendMessage(helper, m);
+                    ThreadMessage ret = waitForMessage();
+                    if(ret == null){
+                        print("Error occured while getting message");
+                        continue;
+                    }
+                    /*try {
                         ret = inputQueue.take();
                     } catch(InterruptedException e){
                         e.printStackTrace();
                         print("Error asking helper for id: " + fingers[i + 1].start);
                         continue;
-                    }
+                    }*/
+
                     if(betweenStartInclusive(identifier, fingers[i+1].start, ret.getReturnThread().identifier)){
                         fingers[i+1].node = this;
                     } else {
@@ -146,16 +154,58 @@ public class ChordThread implements Runnable {
                 else{
                     c= new UpdateFingerTableCommand(fingers[1].node, i, insert);
                 }
-                sendUpdateMessage(p, this, c);
+                boolean ret = sendUpdateMessage(p, this, c);
                 //updateFingerTable(p, this, i);
             }
         }
     }
 
-    public void sendUpdateMessage(ChordThread target, ChordThread s, Command c){
+    public boolean sendMessage(ChordThread destination, ThreadMessage message){
+        print("Sending " + message.getCommand().getCommand() + " to node(" + destination.identifier + ") at time + " + System.currentTimeMillis());
+        boolean caughtError = true;
+        int attemptedTimes = 0;
+        while(caughtError){
+            try{
+                destination.inputQueue.add(message);
+                caughtError = false;
+            } catch(IllegalStateException e){
+                attemptedTimes ++;
+            }
+        }
+        if(attemptedTimes == 200){
+            print("FAILED TO SEND MESSAGE --- " + message.getCommand());
+            System.exit(1);
+        }
+        numMessagesSent++;
+        return true;
+    }
+
+    public ThreadMessage waitForMessage(){
+        ThreadMessage received = null;
+        boolean errorOccurred = true;
+        while(errorOccurred) {
+            try {
+                received = inputQueue.take();
+                errorOccurred = false;
+                if(received.getReturnThread() != null){
+                    print("@(" + identifier + " received value(" + received.getReturnThread().identifier + ") for command(" + received.getCommand().getCommand() + ")");
+                } else {
+                    print("Received message: " + received.getCommand().getCommand() + " at time " + System.currentTimeMillis());
+                }
+            } catch (InterruptedException e) {
+
+            }
+        }
+        return received;
+    }
+
+    public boolean sendUpdateMessage(ChordThread target, ChordThread s, Command c){
        // print("Sending update message to node " + target.identifier + " from node " + identifier);
-        if(target == s){ return;}
+
+        if(target == s){ return false;}
         ThreadMessage nMessage = new ThreadMessage(c,this,null);
+        print("Sending " + nMessage.getCommand().getCommand() + " to node(" + target.identifier + ") at time + " + System.currentTimeMillis());
+
         boolean caughtError = true;
         while(caughtError){
             try{
@@ -165,11 +215,16 @@ public class ChordThread implements Runnable {
 
             }
         }
+        numMessagesSent++;
         try{
+
             ThreadMessage response = inputQueue.take();
+            print("Received response from " + target.identifier + " at time " + System.currentTimeMillis());
         } catch(InterruptedException e){
 
         }
+        //print("@(" + identifier +") done SendUpdateMessage");
+        return true;
         //print("FINISHED");
     }
     public void updateFingerTable(ChordThread s, int i, boolean insert){
@@ -185,7 +240,7 @@ public class ChordThread implements Runnable {
                 ChordThread n = predecessor;
                 // isnt this a complete traversal?
                 UpdateFingerTableCommand c = new UpdateFingerTableCommand(s, i, insert);
-                sendUpdateMessage(n, s, c);
+                boolean ret = sendUpdateMessage(n, s, c);
                 //updateFingerTable(n, s,i);
 
             }
@@ -198,20 +253,22 @@ public class ChordThread implements Runnable {
         ThreadMessage message = null;
         while(true){
 
-            try{
+            /*try{
                 message = inputQueue.take();
             } catch(InterruptedException e){
                 System.out.println("Interrupt occurred for thread " + identifier);
                 e.printStackTrace();
                 continue;
-            }
+            }*/
+            message = waitForMessage();
+            if(message == null){ print("Error occurred while waiting for message"); continue; }
 
             Command c = message.getCommand();
             if(c instanceof ClosestPreFingerCommand){
                 int id = ((ClosestPreFingerCommand) c).getId();
                 ChordThread toReturn = getClosestPrecedingFinger(id);
                 ThreadMessage r = new ThreadMessage(c, this, toReturn);
-                boolean caughtError = true;
+                /*boolean caughtError = true;
                 while(caughtError){
                     try{
                         message.getOrigin().inputQueue.add(r);
@@ -219,7 +276,8 @@ public class ChordThread implements Runnable {
                     } catch(IllegalStateException e){
 
                     }
-                }
+                }*/
+                boolean smRet = sendMessage(message.getOrigin(), r);
 
             } else if(c instanceof FindCommand){
                 /*if(message.getOrigin() == null) {
@@ -231,7 +289,7 @@ public class ChordThread implements Runnable {
                 ChordThread hasKey = findSuccessor(id);
                 if(message.getOrigin() != null){
                     ThreadMessage r = new ThreadMessage(c, this, hasKey);
-                    boolean caughtError = true;
+                   /* boolean caughtError = true;
                     while(caughtError) {
                         try {
                             message.getOrigin().inputQueue.add(r);
@@ -239,7 +297,8 @@ public class ChordThread implements Runnable {
                         } catch(IllegalStateException e){
                             print("Caught error");
                         }
-                    }
+                    }*/
+                    boolean smRet = sendMessage(message.getOrigin(), r);
                 } else {
 
                     print("Thread " + identifier + " found key " + id + " at node " + hasKey.identifier);
@@ -252,7 +311,7 @@ public class ChordThread implements Runnable {
                 UpdateFingerTableCommand ftc = (UpdateFingerTableCommand)c;
                 updateFingerTable(ftc.getFinger(), ftc.getFingerIndex(), ftc.isInsert());
                 ThreadMessage m = new ThreadMessage(new Command("Acknowledgement"), this, null);
-                boolean errorCaught = true;
+                /*boolean errorCaught = true;
                 while(errorCaught){
                     try{
                         message.getOrigin().inputQueue.add(m);
@@ -260,12 +319,13 @@ public class ChordThread implements Runnable {
                     } catch(IllegalStateException e){
 
                     }
-                }
+                }*/
+                boolean smRet = sendMessage(message.getOrigin(), m);
             } else if(c instanceof UpdateKeysCommand){
                 UpdateKeysCommand keysCommand= (UpdateKeysCommand)c;
                 updateKeys(keysCommand.getStart(), keysCommand.getEnd());
                 ThreadMessage m = new ThreadMessage(new Command("Acknowledgement"), this, null);
-                boolean errorCaught = true;
+               /* boolean errorCaught = true;
                 while(errorCaught){
                     try{
                         message.getOrigin().inputQueue.add(m);
@@ -273,12 +333,13 @@ public class ChordThread implements Runnable {
                     } catch(IllegalStateException e){
 
                     }
-                }
+                }*/
+                boolean smRet = sendMessage(message.getOrigin(), m);
             }  else if(c instanceof UpdatePredecessorCommand){
                 UpdatePredecessorCommand predecessorCommand= (UpdatePredecessorCommand)c;
                 updatePredecessor(predecessorCommand.getPredecessor());
                 ThreadMessage m = new ThreadMessage(new Command("Acknowledgement"), this, null);
-                boolean errorCaught = true;
+               /* boolean errorCaught = true;
                 while(errorCaught){
                     try{
                         message.getOrigin().inputQueue.add(m);
@@ -286,7 +347,8 @@ public class ChordThread implements Runnable {
                     } catch(IllegalStateException e){
 
                     }
-                }
+                }*/
+                boolean smRet = sendMessage(message.getOrigin(), m);
             }
             else if(c instanceof LeaveCommand){
                 removeSelf();
@@ -337,7 +399,7 @@ public class ChordThread implements Runnable {
             if(m!= this) {
                 ClosestPreFingerCommand c = new ClosestPreFingerCommand(id);
                 ThreadMessage message = new ThreadMessage(c, this, null);
-                boolean caughtError = true;
+                /*boolean caughtError = true;
                 while(caughtError){
                     try{
                         m.inputQueue.add(message);
@@ -345,16 +407,23 @@ public class ChordThread implements Runnable {
                     } catch(IllegalStateException e){
 
                     }
-                }
+                }*/
+                boolean smRet = sendMessage(m, message);
 
 
-                try{
+                /*try{
                     m = inputQueue.take().getReturnThread();
                 } catch(InterruptedException e){
                     System.out.println("Return thread failed");
                     e.printStackTrace();
                     continue;
+                }*/
+                ThreadMessage received = waitForMessage();
+                if(m == null){
+                    print("Error occurred");
+                    continue;
                 }
+                m = received.getReturnThread();
             } else {
                 m = getClosestPrecedingFinger(id);
             }
@@ -386,6 +455,8 @@ public class ChordThread implements Runnable {
     public ArrayList<Integer> getKeys(){
         return keys;
     }
+    public int getNumMessagesSent(){ return numMessagesSent;}
+    public void resetNumMessagesSent(){ numMessagesSent = 0;}
     public void updateKeys(int start, int end){
         if (end<start) {
             for (int i = start; i < 256; i++) {
@@ -413,10 +484,10 @@ public class ChordThread implements Runnable {
     }
     public void removeSelf(){
         UpdateKeysCommand k= new UpdateKeysCommand(predecessor.identifier, identifier+1);
-        sendUpdateMessage(fingers[1].node, this, k);
+        boolean ret = sendUpdateMessage(fingers[1].node, this, k);
         updateOthers(false);
         UpdatePredecessorCommand p= new UpdatePredecessorCommand(predecessor);
-        sendUpdateMessage(fingers[1].node, this, p);
+        ret = sendUpdateMessage(fingers[1].node, this, p);
         keys.clear();
         fingers=null;
         predecessor=null;
