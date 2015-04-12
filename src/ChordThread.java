@@ -483,14 +483,18 @@ public class ChordThread implements Runnable {
         predecessor= newPredecessor;
     }
     public void removeSelf(){
+
+        boolean ret = sendUpdateMessage(predecessor, this, new UpdateFingerTableCommand(fingers[1].node, 1, false));
         UpdateKeysCommand k= new UpdateKeysCommand(predecessor.identifier, identifier+1);
-        boolean ret = sendUpdateMessage(fingers[1].node, this, k);
+        ret = sendUpdateMessage(fingers[1].node, this, k);
         updateOthers(false);
         UpdatePredecessorCommand p= new UpdatePredecessorCommand(predecessor);
         ret = sendUpdateMessage(fingers[1].node, this, p);
         keys.clear();
         fingers=null;
         predecessor=null;
+
+
     }
     public void start() {
 
