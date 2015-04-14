@@ -180,7 +180,7 @@ public class ChordThread implements Runnable {
             print("FAILED TO SEND MESSAGE --- " + message.getCommand());
             System.exit(1);
         }
-        numMessagesSent++;
+        if(!message.getCommand().getCommand().equals("Acknowledgement")){ numMessagesSent++;}
         return true;
     }
 
