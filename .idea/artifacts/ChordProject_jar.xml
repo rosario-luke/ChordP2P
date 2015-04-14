@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="ChordProject:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/ChordProject_jar</output-path>
+    <root id="archive" name="ChordProject.jar">
+      <element id="module-output" name="ChordProject" />
+    </root>
+  </artifact>
+</component>

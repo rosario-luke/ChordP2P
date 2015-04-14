@@ -1,5 +1,6 @@
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.concurrent.SynchronousQueue;
 
 
@@ -476,11 +477,11 @@ public class ChordThread implements Runnable {
             }
         }
         else{
-            for (int i= start; i<end; i++){
+            for (int i= start; i<=end; i++){
                 keys.add(i);
             }
         }
-
+        keys = new ArrayList<Integer>(new LinkedHashSet<Integer>(keys));
     }
     public int getIdentifier(){
         return identifier;
@@ -494,7 +495,7 @@ public class ChordThread implements Runnable {
     public void removeSelf(){
 
         boolean ret = sendUpdateMessage(predecessor, this, new UpdateFingerTableCommand(fingers[1].node, 1, false));
-        UpdateKeysCommand k= new UpdateKeysCommand(predecessor.identifier, identifier+1);
+        UpdateKeysCommand k= new UpdateKeysCommand(predecessor.identifier+1, identifier);
         ret = sendUpdateMessage(fingers[1].node, this, k);
         updateOthers(false);
         UpdatePredecessorCommand p= new UpdatePredecessorCommand(predecessor);
