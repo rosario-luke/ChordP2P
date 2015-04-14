@@ -78,8 +78,12 @@ public class ChordThread implements Runnable {
             //fingers[1].node.updatePredecessor(this);
             //UpdatePredecessorCommand g= new getPredecessorCommand(this);
             //sendUpdateMessage(fingers[1].node, this, g);
-            /*UpdateSuccessorCommand s= new UpdateSuccessorCommand(this);
-            sendUpdateMessage(predecessor, this, s);*/
+            //UpdateFingerTableCommand command = new UpdateFingerTableCommand(this, 1, true);
+            UpdateSuccessorCommand s = new UpdateSuccessorCommand(this);
+            //sendUpdateMessage(predecessor, this, s);
+            sendMessage(predecessor, new ThreadMessage(s, this, null));
+            //sendUpdateMessage(predecessor, command);
+           waitForMessage();
 
             for (int i=1; i<8 ;i++){ // only up to 8 since we're doing 2-step accesses
                 if (betweenStartInclusive(fingers[i+1].start, identifier, fingers[i].node.getIdentifier())){
@@ -358,6 +362,11 @@ public class ChordThread implements Runnable {
                 synchronized(c){
                     c.notifyAll();
                 }
+            } else if(c instanceof UpdateSuccessorCommand){
+                fingers[1].node = ((UpdateSuccessorCommand)c).getSuccessor();
+                ThreadMessage m = new ThreadMessage(new Command("Acknowledgement"), this, null);
+                sendMessage(message.getOrigin(), m);
+
             }
 
 
